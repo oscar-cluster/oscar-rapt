@@ -62,7 +62,7 @@ use strict;
 #use v5.10.1; # Switch
 use Getopt::Long;
 use IO::File;
-use POSIX qw(tmpnam);
+#use POSIX qw(tmpnam);
 use File::Basename;
 use File::Copy;
 use Carp;
