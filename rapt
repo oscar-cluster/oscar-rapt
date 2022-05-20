@@ -1070,7 +1070,7 @@ DBinDirectory "dists/$codename/main/binary-$a" {
   Contents "dists/$codename/Contents-$a";
 };
 
-Tree "dists/bullseye" {
+Tree "dists/$codename" {
   Sections "main"; # main OSCAR";
   Architectures "$a";
 };
@@ -1082,7 +1082,7 @@ EOF2
 	    $err += abs(system($cmd));
 
 	    # Release file
-	    $cmd = "cd $repo; apt-ftparchive release -c=aptftp.conf dists/$codename > dists/codename/Release";
+	    $cmd = "cd $repo; apt-ftparchive release -c=aptftp.conf dists/$codename > dists/$codename/Release";
 	    print "Executing command: $cmd\n";
 	    $err += abs(system($cmd));
 
@@ -1100,7 +1100,7 @@ EOF2
             }
 
 	    # Sign the repo.
-	    $cmd = "cd $repo; gpg --default-key oscar -bao dists/$codename/Release.gpg dists/$codename/Release";
+	    $cmd = "cd $repo; gpg --yes --default-key oscar -bao dists/$codename/Release.gpg dists/$codename/Release";
 	    print "Executing command: $cmd\n";
 	    $err += abs(system($cmd));
 
