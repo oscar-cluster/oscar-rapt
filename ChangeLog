@@ -1,3 +1,6 @@
+rapt-2.9:
+- Full repository generation rewrite with optional signing.
+
 rapt-2.8.11:
 - Fix a critical bug in repo management. If --installroot / was used
 (oscar-config does this), rapt was trying to debbootstrap / thinking it was

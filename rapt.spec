@@ -1,7 +1,7 @@
 # $Id$
 Summary: Wrapper to apt-get for clusters
 Name: rapt
-Version: 2.8.11
+Version: 2.9
 Vendor: NEC HPCE
 Release: 2%{?dist}
 License: GPL
@@ -11,10 +11,12 @@ Group: System Environment/Tools
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}
 #Requires: apt
+#Requires: apt-utils
 Requires: dpkg-devel
 Requires: debootstrap
 Requires: dpkg-dev
 #Requires: deb
+Requires: gpg
 
 %description 
 
@@ -46,6 +48,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man8/rapt*
 
 %changelog
+* Fri May 20 2022 Olivier Lahaye <olivier.lahaye@cea.fr> - 2.9
+- New upstream version with ability to generate modern repositories
 * Sun Dec 15 2013 Olivier Lahaye <olivier.lahaye@cea.fr> - 2.8.11-2
 - Removed AutoReqProv to deps are automatic.
 * Tue Jun 25 2013 Olivier Lahaye <olivier.lahaye@cea.fr> - 2.8.11-1

@@ -244,6 +244,7 @@ sub get_arch_repos (@) {
                 # Therefore in our case, for the common repo, we check
                 # architectures within /tftpboot/oscar/distro and create an
                 # assocaited repo for all of them
+		# BUG: OL: /tftpboot is no longer standard!
                 my @sub_repos = `find /tftpboot/oscar -name \"debian-*\"`;
                 my $r2;
                 for $r2 (@sub_repos) {
@@ -990,8 +991,8 @@ sub prep_repodata (@) {
     my @list_arch = @_;
     my $err;
 
-    if (system("which dpkg-scanpackages 2>/dev/null")) {
-        carp "ERROR: Could not find command dpkg-scanpackages!\n";
+    if (system("which apt-ftparchive 2>/dev/null")) {
+        carp "ERROR: Could not find command apt-ftparchive!\n";
         return 1;
     }
 
@@ -1013,7 +1014,7 @@ sub prep_repodata (@) {
                 carp "ERROR: Impossible to detect the codename for $repo";
                 return 1;
             }
-            my $subdir = "dists/$codename/binary-$a";
+            my $subdir = "dists/$codename/main/binary-$a";
 
             # create directory for package metadata
             if (! -d "$repo/$subdir") {
@@ -1022,17 +1023,100 @@ sub prep_repodata (@) {
                         return 1);
             }
 
-            # now generate the Package.gz file
-            my $path = "$repo/$subdir/Packages*";
-            if ( -f "$path" ) {
-                require File::Path;
-                print "Deleting $path...\n" if $verbose;
-                File::Path::rmtree ("$path", 0, 0);
+            # create directory for packages
+            if (! -d "$repo/pool") {
+                !system("mkdir -p $repo/pool")
+                    or (carp "ERROR: Could not create directory $repo/pool",
+                        return 1);
             }
-            my $cmd = "cd $repo; dpkg-scanpackages ./ /dev/null";
-            $cmd .= "| tee $subdir/Packages | gzip -c9 >$subdir/Packages.gz";
-            print "Executing command: $cmd\n";
-            $err += abs(system($cmd));
+
+	    # Now generate the repository metadata.
+	    # 1/ Create the apt-ftparchive configuration files
+	    open my $APTFTP_CONF, ">", "$repo/aptftp.conf" or (carp "Failed to open $repo/aptftp.conf for writing", return 1);
+	    print $APTFTP_CONF <<"EOF1";
+APT::FTPArchive::Release {
+  Origin "OSCAR Cluster";
+  Label "OSCAR Cluster APT repository";
+  Suite "stable";
+  Codename "$codename";
+  Version "6.1.3";
+  Architectures "$a";
+  Components "main";
+  Description "OSCAR Cluster suite";
+};
+EOF1
+            close $APTFTP_CONF;
+
+	    open my $APTGENERATE_CONF, ">", "$repo/aptgenerate.conf" or (carp "Failed to open $repo/aptgenerate.conf for writing", return 1);
+	    print $APTGENERATE_CONF <<"EOF2";
+Dir {
+  ArchiveDir "$repo";
+  CacheDir "$repo";
+}
+
+efault {
+  Packages::Extensions ".deb";
+  Packages::Compress ". gzip bzip2";
+  Sources::Compress ". gzip bzip2";
+  Contents::Compress "gzip bzip2";
+}
+
+TreeDefault {
+  Directory "pool/";
+}
+
+DBinDirectory "dists/$codename/main/binary-$a" {
+  Packages "dists/$codename/main/binary-$a/Packages";
+  Contents "dists/$codename/Contents-$a";
+};
+
+Tree "dists/bullseye" {
+  Sections "main"; # main OSCAR";
+  Architectures "$a";
+};
+EOF2
+            # now generate the metadata files.
+	    # => Packages.gz and db files
+	    my $cmd = "cd $repo; apt-ftparchive generate -c=aptftp.conf aptgenerate.conf";
+	    print "Executing command: $cmd\n";
+	    $err += abs(system($cmd));
+
+	    # Release file
+	    $cmd = "cd $repo; apt-ftparchive release -c=aptftp.conf dists/$codename > dists/codename/Release";
+	    print "Executing command: $cmd\n";
+	    $err += abs(system($cmd));
+
+	    # Sign Release file if possible.
+	    # check that pgp command is available.
+            if (system("which gpg 2>/dev/null")) {
+                warn "Could not find command gpg: repository won't be signed!\n";
+                return $err;
+            }
+
+	    # Check that oscar key exists.
+            if (system("gpg --list-key oscar > /dev/null")) {
+                warn "Could not find 'oscar' gpg key: Please create an oscar gpg signing key!\nRepository won't be signed!\n";
+		return $err;
+            }
+
+	    # Sign the repo.
+	    $cmd = "cd $repo; gpg --default-key oscar -bao dists/$codename/Release.gpg dists/$codename/Release";
+	    print "Executing command: $cmd\n";
+	    $err += abs(system($cmd));
+
+	    # Install pub key if needed
+	    if (not -e "/etc/apt/trusted.gpg.d/oscar.gpg") {
+	        $cmd = "gpg --export --default-key oscar | tee /etc/apt/trusted.gpg.d/oscar.gpg > /dev/null";
+	        print "Executing command: $cmd\n";
+                $err += abs(system($cmd));
+	    }
+
+	    #my $path = "$repo/$subdir/Packages*";
+	    #if ( -f "$path" ) {
+	    #    require File::Path;
+	    #    print "Deleting $path...\n" if $verbose;
+	    #    File::Path::rmtree ("$path", 0, 0);
+	    #}
         }
     }
     return $err;
