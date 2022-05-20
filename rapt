@@ -991,7 +991,7 @@ sub prep_repodata (@) {
     my @list_arch = @_;
     my $err;
 
-    if (system("which apt-ftparchive 2>/dev/null")) {
+    if (system("which apt-ftparchive >/dev/null 2>/dev/null")) {
         carp "ERROR: Could not find command apt-ftparchive!\n";
         return 1;
     }
@@ -1088,7 +1088,7 @@ EOF2
 
 	    # Sign Release file if possible.
 	    # check that pgp command is available.
-            if (system("which gpg 2>/dev/null")) {
+            if (system("which gpg >/dev/null 2>/dev/null")) {
                 warn "Could not find command gpg: repository won't be signed!\n";
                 return $err;
             }
