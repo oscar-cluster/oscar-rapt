@@ -65,6 +65,8 @@ use IO::File;
 #use POSIX qw(tmpnam);
 use File::Basename;
 use File::Copy;
+use File::Temp;
+
 use Carp;
 
 my ($verbose, $export, $unexport, $prepare, $listexp, $name_only);
@@ -72,6 +74,7 @@ my $installroot;
 my $distro;
 my (@repos, @repoadd, @repodel, $repolist);
 my @delfiles;
+my $rapt_source_list;
 
 Getopt::Long::Configure("pass_through");
 GetOptions(
@@ -131,7 +134,7 @@ sub cleanup {
             !system("rm -f $f") or print "ERROR: Couldn't remove file $f: $!\n";
         }
     }
-    &restore_aptlist;
+    #    &restore_aptlist;
 }
 
 # Get the default repos for the local distro.
@@ -696,98 +699,17 @@ sub debootstrap ($@) {
 #######
 
 
-# this function returns the apt list filename
-sub aptlist_name () {
-    return $installroot."/etc/apt/sources.list";
-}
-
-# create lock file in safe way
-# function only returns successfully!
-sub lock_aptlist () {
-    my $file = aptlist_name();
-    $file .= "_lock";
-    my $err;
-
-    # create lockfile with other name
-    my $tfile = $file."_".$$;
-    write_pid($tfile);
-    push @delfiles, $tfile;
-
-  WAIT4LOCK:
-    while (-e $file) {
-        my $lpid = &read_pid($file);
-        if ($lpid) {
-            if (! -d "/proc/$lpid") {
-                print "Stale lock found for non-existing process $lpid.".
-                    " Removing it!\n" if $verbose;
-                unlink($file);
-                last;
-            } else {
-                print "Waiting for lock $file to be released...\n";
-                sleep(1);
-            }
-        } else {
-            print "Lock $file disappeared or empty !?!\n" if $verbose;
-            last;
-        }
-    }
-
-    # We check if the lock is already taken
-    if (-f $file) {
-        print "WARN: Couldn't acquire lock $file\n";
-        goto WAIT4LOCK;
-    }
-
-    # Now try to acquire the lock
-    my $cmd = "mv $tfile $file 2>/dev/null";
-    $err = system($cmd);
-    if ($err) {
-        die "ERROR: Couldn't acquire lock $file ($cmd)\n";
-    }
-    return;
-}
-
-sub unlock_aptlist () {
-    my $file = aptlist_name();
-    $file .= "_lock";
-    my $pid = &read_pid($file);
-    if ($pid != "$$") {
-    print "WARNING! Unexpected pid $pid is holding the lock $file\n";
-    } else {
-    !system("rm -f $file") or carp("Could not remove lock $file: $!");
-    }
-}
-
-sub backup_aptlist {
-    my $file = aptlist_name();
-    my $backup = $file . "_bak$$";
-    if (-f $file) {
-    !system("mv $file $backup")
-        or carp("Could not back up $file to $backup: $!");
-    }
-}
-
-sub restore_aptlist {
-    my $file = aptlist_name ();
-    my $backup = $file . "_bak$$";
-    if (-e $backup) {
-        !system("mv $backup $file")
-            or carp("Could not restore $file from $backup: $!");
-    # GV: WARNING, not executing "apt-get update", it is not possible to 
-    # directly reuse apt-get! Users MUST execute manually "apt-get update"!!
-#        !system("apt-get update")
-#            or carp("Could not execute apt-get update");
-    }
-}
-
-# create new sources.list file for apt resembling the current repositories
-sub new_aptlist {
-    my $file = aptlist_name ();
-    my $backup = $file . "_bak$$";
+# create new oscar specific sources.list file for apt resembling the current repositories
+# will be used by apt in the following way:
+# apt -o "Dir::Etc::sourcelist=$rapt_source_list" apt_command apt_args
+sub new_oscar_aptlist {
+    my $file = File::Temp->new( TEMPLATE => 'rapt_source_XXXXX',
+                       UNLINK => 0,
+                       SUFFIX => '.list');
+    croak("Could not open $file->filename: $!") if (! defined($file));
+    $rapt_source_list = $file->filename;
+    push @delfiles, $rapt_source_list; # The temps file needs to be deleted when rapt quits or is killed.
     # We manually add the OSCAR repository entry.
-    copy ($backup, $file);
-    local *OUT;
-    open OUT, "> $file" or croak("Could not open $file: $!");
     for my $repo (@repos) {
         my @data = split(/\+/,$repo);
         # if there's only one word, add codename info
@@ -797,40 +719,18 @@ sub new_aptlist {
         } elsif (scalar(@data) == 2) {
             push @data, ".";
         }
-        print OUT "deb ".join(" ",@data)."\n";
+        print $file "deb ".join(" ",@data)."\n";
     }
 #    print OUT "deb http://oscar.gforge.inria.fr/debian/ stable main oscar";
-    close OUT;
+    close $file;
 }
-
-sub read_pid {
-    my ($file) = @_;
-    local *IN;
-    open IN, "$file" 
-    or do {
-        return 0 if (! -e $file);
-        croak "Could not open $file";
-    };
-    my $pid = <IN>;
-    close IN;
-    return $pid;
-}
-
-sub write_pid {
-    my ($file) = @_;
-    local *OUT;
-    open OUT, "> $file" or croak "Could not create $file";
-    print OUT "$$";
-    close OUT;
-}
-
 
 ###############################################################
 # stuff below this line should be deleted once packman is used!
 
 sub oscar_repocmd {
     my ($cmd, @r) = @_;
-    if (!&on_oscar_master()) {
+    if (!&on_oscar_master()) { #BUG OL: function on_oscar_master doesn't exists!
         print STDERR "ERROR: You can only do this on an OSCAR master node!\n";
         exit 1;
     }
@@ -1425,17 +1325,17 @@ if ($installroot && ($installroot ne "/")) {
 }
 
 # lock source.list file such that concurrent "rapt"s wait for the lock
-lock_aptlist ();
+#lock_aptlist ();
 
-backup_aptlist ();
+#backup_aptlist ();
 
 # create temporary sources.list file with proper repository paths
-new_aptlist ();
+new_oscar_aptlist ();
 
 # update Packages cache. Note that we turn off all output (including stderr),
 # we are only interested by the return code.
 #my $cmd = "/usr/bin/apt-get -y --allow-unauthenticated update";
-my $cmd = "/usr/bin/apt-get -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true update";
+my $cmd = "/usr/bin/apt -o Dir::Etc::sourcelist=$rapt_source_list -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true update";
 $cmd = $cmd . " 1>/dev/null 2>/dev/null" if (!$verbose);
 if ($installroot && ($installroot ne "/")) {
     $cmd = "chroot $installroot $cmd";
@@ -1467,7 +1367,7 @@ my $cmd;
 if ($ARGV[0] eq "search" || $ARGV[0] eq "show") {
     $cmd = "aptitude ";
 } else {
-    $cmd = "apt-get --allow-unauthenticated ";
+    $cmd = "/usr/bin/apt -o Dir::Etc::sourcelist=$rapt_source_list -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true ";
 }
 for (my $i=0; $i<scalar (@ARGV); $i++) {
     if ($ARGV[$i] eq "*") {
@@ -1506,8 +1406,8 @@ if ($installroot && ($installroot ne "/")) {
     &uninstall_fake_start_stop_daemon($installroot);
 }
 
-restore_aptlist ();
-unlock_aptlist ();
+#restore_aptlist ();
+#unlock_aptlist ();
 
 exit $err;
 
