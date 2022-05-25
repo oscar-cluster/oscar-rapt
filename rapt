@@ -701,13 +701,14 @@ sub debootstrap ($@) {
 
 # create new oscar specific sources.list file for apt resembling the current repositories
 # will be used by apt in the following way:
-# apt -o "Dir::Etc::sourcelist=$rapt_source_list" apt_command apt_args
+# apt -o Dir::Etc::SourceList=/tftpboot/distro/rapt_source.list -o Dir::Etc::SourceParts=/dev/null apt_command apt_args
 sub new_oscar_aptlist {
     my $file = File::Temp->new( TEMPLATE => 'rapt_source_XXXXX',
+                       DIR => '/tmp',
                        UNLINK => 0,
                        SUFFIX => '.list');
     croak("Could not open $file->filename: $!") if (! defined($file));
-    $rapt_source_list = $file->filename;
+    $rapt_source_list = "/tmp/".$file->filename;
     push @delfiles, $rapt_source_list; # The temps file needs to be deleted when rapt quits or is killed.
     # We manually add the OSCAR repository entry.
     for my $repo (@repos) {
@@ -1335,7 +1336,7 @@ new_oscar_aptlist ();
 # update Packages cache. Note that we turn off all output (including stderr),
 # we are only interested by the return code.
 #my $cmd = "/usr/bin/apt-get -y --allow-unauthenticated update";
-my $cmd = "/usr/bin/apt -o Dir::Etc::sourcelist=$rapt_source_list -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true update";
+my $cmd = "/usr/bin/apt -o Dir::Etc::SourceList=$rapt_source_list -o Dir::Etc::SourceParts=/dev/null -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true update";
 $cmd = $cmd . " 1>/dev/null 2>/dev/null" if (!$verbose);
 if ($installroot && ($installroot ne "/")) {
     $cmd = "chroot $installroot $cmd";
@@ -1367,7 +1368,7 @@ my $cmd;
 if ($ARGV[0] eq "search" || $ARGV[0] eq "show") {
     $cmd = "aptitude ";
 } else {
-    $cmd = "/usr/bin/apt -o Dir::Etc::sourcelist=$rapt_source_list -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true ";
+    $cmd = "/usr/bin/apt -o Dir::Etc::SourceList=$rapt_source_list -o Dir::Etc::SourceParts=/dev/null -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true ";
 }
 for (my $i=0; $i<scalar (@ARGV); $i++) {
     if ($ARGV[$i] eq "*") {
