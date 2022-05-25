@@ -716,9 +716,9 @@ sub new_oscar_aptlist {
         # if there's only one word, add codename info
         if (scalar(@data) == 1) {
             my $codename = detect_codename_repo($repo);
-            push @data, ($codename, ".");
+            push @data, ($codename, "main");
         } elsif (scalar(@data) == 2) {
-            push @data, ".";
+            push @data, "main";
         }
         print $file "deb ".join(" ",@data)."\n";
     }
