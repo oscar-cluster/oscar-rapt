@@ -1186,6 +1186,8 @@ sub get_local_repository_path ($) {
 
     $repo =~ s/^file://;
 
+    my @data = split(/\+/,$repo); # strip components from path if any.
+    $repo = $data[0];
     if ($repo =~ /(.url)$/) {
         print "URL file, looks valid\n" if $verbose;
     } elsif ( ! -d $repo) {
