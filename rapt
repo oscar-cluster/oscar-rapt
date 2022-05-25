@@ -708,7 +708,7 @@ sub new_oscar_aptlist {
                        UNLINK => 0,
                        SUFFIX => '.list');
     croak("Could not open $file->filename: $!") if (! defined($file));
-    $rapt_source_list = "/tmp/".$file->filename;
+    $rapt_source_list = $file->filename;
     push @delfiles, $rapt_source_list; # The temps file needs to be deleted when rapt quits or is killed.
     # We manually add the OSCAR repository entry.
     for my $repo (@repos) {
