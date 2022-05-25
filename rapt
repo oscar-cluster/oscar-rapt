@@ -1335,8 +1335,7 @@ new_oscar_aptlist ();
 
 # update Packages cache. Note that we turn off all output (including stderr),
 # we are only interested by the return code.
-#my $cmd = "/usr/bin/apt-get -y --allow-unauthenticated update";
-my $cmd = "/usr/bin/apt -o Dir::Etc::SourceList=$rapt_source_list -o Dir::Etc::SourceParts=/dev/null -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true update";
+my $cmd = "/usr/bin/apt-get -o Dir::Etc::SourceList=$rapt_source_list -o Dir::Etc::SourceParts=/dev/null -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true update";
 $cmd = $cmd . " 1>/dev/null 2>/dev/null" if (!$verbose);
 if ($installroot && ($installroot ne "/")) {
     $cmd = "chroot $installroot $cmd";
@@ -1368,7 +1367,7 @@ my $cmd;
 if ($ARGV[0] eq "search" || $ARGV[0] eq "show") {
     $cmd = "aptitude ";
 } else {
-    $cmd = "/usr/bin/apt -o Dir::Etc::SourceList=$rapt_source_list -o Dir::Etc::SourceParts=/dev/null -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true ";
+    $cmd = "/usr/bin/apt-get -o Dir::Etc::SourceList=$rapt_source_list -o Dir::Etc::SourceParts=/dev/null -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true ";
 }
 for (my $i=0; $i<scalar (@ARGV); $i++) {
     if ($ARGV[$i] eq "*") {
