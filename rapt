@@ -976,6 +976,11 @@ Tree "dists/$codename" {
   Architectures "$a";
 };
 EOF2
+	    # Remove old cache file so apt-ftparchive build files from real pool content.
+	    my $cmd = "cd $repo; rm -f packages-$a.db";
+	    print "Executing command: $cmd\n";
+	    $err += abs(system($cmd));
+
             # now generate the metadata files.
 	    # => Packages.gz and db files
 	    my $cmd = "cd $repo; apt-ftparchive generate -c=aptftp.conf aptgenerate.conf";
