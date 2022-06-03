@@ -1,13 +1,13 @@
 Source: rapt
-Section: oscar
+Section: science
 Priority: optional
-Maintainer: Erich Focht <efocht@hpce.nec.com>
+Maintainer: Olivier Lahaye <olivier.lahaye@cea.fr>
 Build-Depends: debhelper (>= 4.0.0)
 Standards-Version: 3.7.2
 
 Package: rapt
 Architecture: all
-Depends: ${misc:Depends}, liboscar (>> 6.1), apt-transport-https, apt-utils, gpg
+Depends: ${misc:Depends}, liboscar-server (>> 6.2), apt-transport-https, apt-utils, gpg
 Description: Wrapper to apt-get for clusters
  Wrapper for apt-get which extends it to deal with local package
  repositories, prepare their metadata, export them through http and install
