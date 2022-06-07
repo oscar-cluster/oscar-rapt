@@ -7,7 +7,7 @@ Standards-Version: 3.7.2
 
 Package: rapt
 Architecture: all
-Depends: ${misc:Depends}, liboscar-server (>> 6.2), apt-transport-https, apt-utils, gpg
+Depends: ${misc:Depends}, liboscar-server (>= 6.1.3), apt-transport-https, apt-utils, gpg
 Description: Wrapper to apt-get for clusters
  Wrapper for apt-get which extends it to deal with local package
  repositories, prepare their metadata, export them through http and install
