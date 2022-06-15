@@ -955,7 +955,7 @@ Dir {
   CacheDir "$repo";
 }
 
-efault {
+Default {
   Packages::Extensions ".deb";
   Packages::Compress ". gzip bzip2";
   Sources::Compress ". gzip bzip2";
@@ -966,7 +966,7 @@ TreeDefault {
   Directory "pool/";
 }
 
-DBinDirectory "dists/$codename/main/binary-$a" {
+BinDirectory "dists/$codename/main/binary-$a" {
   Packages "dists/$codename/main/binary-$a/Packages";
   Contents "dists/$codename/Contents-$a";
 };
